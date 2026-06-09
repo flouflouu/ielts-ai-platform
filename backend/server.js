@@ -443,15 +443,13 @@ app.get("/exam-history", async (req, res) => {
       });
     }
 
-    const [rows] = await db
-      .promise()
-      .query(
-        `SELECT *
-         FROM exam_results
-         WHERE user_id = ?
-         ORDER BY created_at DESC`,
-        [req.session.userId]
-      );
+    const [rows] = await db.promise().query(
+      `SELECT *
+       FROM exam_results
+       WHERE user_id = ?
+       ORDER BY created_at DESC`,
+      [req.session.userId]
+    );
 
     res.json(rows);
 

@@ -2,437 +2,555 @@ import { useState } from "react";
 import axios from "axios";
 
 function Exam() {
+  const [difficulty, setDifficulty] = useState("easy");
+  const [questions, setQuestions] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [result, setResult] = useState(null);
+  const [currentSkill, setCurrentSkill] = useState("reading");
 
-  const [difficulty, setDifficulty] =
-    useState("easy");
+  const skillOrder = [
+    "reading",
+    "writing",
+    "listening",
+    "speaking"
+  ];
 
-  const [questions, setQuestions] =
-    useState(null);
+  const skillTitles = {
+    reading: "Reading",
+    writing: "Writing",
+    listening: "Listening",
+    speaking: "Speaking"
+  };
 
-  const [answers, setAnswers] =
-    useState({});
+  const speakingInterviewQuestions = [
+    "What is your full name?",
+    "Where are you from?",
+    "What are your hobbies?",
+    "Do you work or study?",
+    "Why are you practicing IELTS speaking?"
+  ];
 
-  const [result, setResult] =
-    useState(null);
+  const cleanSpeakingQuestion = (text) => {
+  return text
+    .replace(/Prompt\s*\d+\s*:/gi, "")
+    .trim();
+};
 
-  // TEXT TO SPEECH FOR LISTENING
+const splitSpeakingPrompts = (speakingQuestions) => {
+  const splitQuestions = [];
+
+  speakingQuestions.forEach((item) => {
+    const parts = item
+      .split(/Prompt\s*\d+\s*:/gi)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    if (parts.length > 0) {
+      splitQuestions.push(...parts);
+    } else {
+      splitQuestions.push(cleanSpeakingQuestion(item));
+    }
+  });
+
+  return splitQuestions;
+};
+
+const getCurrentQuestions = (skill) => {
+  if (!questions) return [];
+
+  if (skill === "speaking") {
+    return [
+      ...speakingInterviewQuestions,
+      ...splitSpeakingPrompts(questions.speaking || [])
+    ];
+  }
+
+  return questions[skill] || [];
+};
 
   const speakQuestion = (text) => {
-
-    const speech =
-      new SpeechSynthesisUtterance(text);
-
+    const speech = new SpeechSynthesisUtterance(text);
     speech.lang = "en-US";
-
-    window.speechSynthesis.speak(
-      speech
-    );
-
+    window.speechSynthesis.speak(speech);
   };
 
-  // SPEECH TO TEXT FOR SPEAKING
+  const startSpeechRecognition = (questionIndex) => {
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
 
-  const startSpeechRecognition =
-    (questionIndex) => {
+    if (!SpeechRecognition) {
+      alert("Speech Recognition is not supported in this browser.");
+      return;
+    }
 
-      const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
 
-      if (!SpeechRecognition) {
+    recognition.lang = "en-US";
+    recognition.start();
 
-        alert(
-          "Speech Recognition is not supported in this browser."
-        );
+    recognition.onresult = (event) => {
+      const transcript =
+        event.results[0][0].transcript;
 
-        return;
-
-      }
-
-      const recognition =
-        new SpeechRecognition();
-
-      recognition.lang = "en-US";
-
-      recognition.start();
-
-      recognition.onresult =
-        (event) => {
-
-          const transcript =
-            event.results[0][0]
-              .transcript;
-
-          setAnswers(prev => ({
-            ...prev,
-            [`speaking${questionIndex}`]:
-              transcript
-          }));
-
-        };
-
+      setAnswers((prev) => ({
+        ...prev,
+        [`speaking${questionIndex}`]: transcript
+      }));
     };
 
-  // GENERATE EXAM
+    recognition.onerror = () => {
+      alert("Speech recognition failed. Please try again.");
+    };
+  };
 
   const generateExam = async () => {
-
     try {
-
-      const response =
-  await axios.post(
-    "http://localhost:3000/generate-exam",
-    {
-      difficulty
-    },
-    {
-      withCredentials: true
-    }
-  );
-
-      setQuestions(
-        response.data
+      const response = await axios.post(
+        "http://localhost:3000/generate-exam",
+        {
+          difficulty
+        },
+        {
+          withCredentials: true
+        }
       );
 
+      setQuestions(response.data);
       setAnswers({});
-
       setResult(null);
+      setCurrentSkill("reading");
 
     } catch (error) {
-
       console.log(error);
-
+      alert("Failed to generate exam. Please make sure you are logged in.");
     }
-
   };
 
-  // SUBMIT EXAM
+  const goNext = () => {
+    const currentIndex = skillOrder.indexOf(currentSkill);
+
+    if (currentIndex < skillOrder.length - 1) {
+      setCurrentSkill(skillOrder[currentIndex + 1]);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const goPrevious = () => {
+    const currentIndex = skillOrder.indexOf(currentSkill);
+
+    if (currentIndex > 0) {
+      setCurrentSkill(skillOrder[currentIndex - 1]);
+      window.scrollTo(0, 0);
+    }
+  };
 
   const submitExam = async () => {
-
     try {
+      const questionsForGrading = {
+        ...questions,
+        speaking: getCurrentQuestions("speaking")
+      };
 
-      const response =
-        await axios.post(
-  "http://localhost:3000/grade-exam",
-  {
-    questions,
-    answers,
-    difficulty
-  },
-  {
-    withCredentials: true
-  }
-);
-
-      setResult(
-        response.data
+      const response = await axios.post(
+        "http://localhost:3000/grade-exam",
+        {
+          questions: questionsForGrading,
+          answers,
+          difficulty
+        },
+        {
+          withCredentials: true
+        }
       );
 
+      setResult(response.data);
+      window.scrollTo(0, 0);
+
     } catch (error) {
-
       console.log(error);
-
+      alert("Failed to submit exam.");
     }
-
   };
 
-  return (
+  const getListeningDisplayText = (question) => {
+  if (question.includes("Questions:")) {
+    return question.split("Questions:")[1].trim();
+  }
 
-    <div className="container mt-5">
+  if (question.includes("Question:")) {
+    return question.split("Question:")[1].trim();
+  }
 
-      <h1>
-        IELTS Practice Exam
-      </h1>
+  return question;
+};
 
-      <div className="mb-3">
+  const extractListeningOptions = (question) => {
+    const optionPattern =
+      /([A-D][\)\.]\s*[^;,\n]+|[A-D]\s*-\s*[^;,\n]+)/g;
 
-        <label className="form-label">
-          Difficulty
-        </label>
+    const matches = question.match(optionPattern);
 
-        <select
-          className="form-control"
-          value={difficulty}
+    if (matches && matches.length > 0) {
+      return matches;
+    }
+
+    return [];
+  };
+
+  const renderQuestionInput = (skill, question, index) => {
+    const answerKey = `${skill}${index}`;
+
+    if (skill === "writing") {
+      return (
+        <textarea
+          className="form-control mb-3"
+          rows="6"
+          value={answers[answerKey] || ""}
+          placeholder="Write your response here..."
           onChange={(e) =>
-            setDifficulty(
-              e.target.value
-            )
+            setAnswers({
+              ...answers,
+              [answerKey]: e.target.value
+            })
           }
-        >
+        />
+      );
+    }
 
-          <option value="easy">
-            Easy
-          </option>
+    if (skill === "listening") {
+      const options = extractListeningOptions(question);
 
-          <option value="medium">
-            Medium
-          </option>
-
-          <option value="hard">
-            Hard
-          </option>
-
-        </select>
-
-      </div>
-
-      <button
-        className="btn btn-primary"
-        onClick={generateExam}
-      >
-        Generate Exam
-      </button>
-
-      {questions && (
-
-        <div className="mt-4">
-
-          {/* READING */}
-
-          <h3>Reading</h3>
-
-          {questions.reading.map(
-            (q, index) => (
-
-              <div
-                key={`reading-${index}`}
-              >
-
-                <p>{q}</p>
-
-                <textarea
-                  className="form-control mb-3"
-                  placeholder="Your answer..."
-                  onChange={(e) =>
-                    setAnswers({
-                      ...answers,
-                      [`reading${index}`]:
-                        e.target.value
-                    })
-                  }
-                />
-
-              </div>
-
-            )
-          )}
-
-          {/* WRITING */}
-
-          <h3>Writing</h3>
-
-          {questions.writing.map(
-            (q, index) => (
-
-              <div
-                key={`writing-${index}`}
-              >
-
-                <p>{q}</p>
-
-                <textarea
-                  className="form-control mb-3"
-                  rows="5"
-                  placeholder="Write your response..."
-                  onChange={(e) =>
-                    setAnswers({
-                      ...answers,
-                      [`writing${index}`]:
-                        e.target.value
-                    })
-                  }
-                />
-
-              </div>
-
-            )
-          )}
-
-          {/* LISTENING */}
-
-          <h3>Listening</h3>
-
-          {questions.listening.map(
-            (q, index) => (
-
-              <div
-                key={`listening-${index}`}
-              >
-
-                <p>{q}</p>
-
-                <button
-                  className="btn btn-secondary mb-2"
-                  onClick={() =>
-                    speakQuestion(q)
-                  }
-                >
-                  🔊 Play Audio
-                </button>
-
-                <textarea
-                  className="form-control mb-3"
-                  placeholder="Your answer..."
-                  onChange={(e) =>
-                    setAnswers({
-                      ...answers,
-                      [`listening${index}`]:
-                        e.target.value
-                    })
-                  }
-                />
-
-              </div>
-
-            )
-          )}
-
-          {/* SPEAKING */}
-
-          <h3>Speaking</h3>
-
-          {questions.speaking.map(
-            (q, index) => (
-
-              <div
-                key={`speaking-${index}`}
-              >
-
-                <p>{q}</p>
-
-                <button
-                  className="btn btn-info mb-2"
-                  onClick={() =>
-                    startSpeechRecognition(
-                      index
-                    )
-                  }
-                >
-                  🎤 Record Answer
-                </button>
-
-                <textarea
-                  className="form-control mb-3"
-                  value={
-                    answers[
-                      `speaking${index}`
-                    ] || ""
-                  }
-                  placeholder="Your response..."
-                  onChange={(e) =>
-                    setAnswers({
-                      ...answers,
-                      [`speaking${index}`]:
-                        e.target.value
-                    })
-                  }
-                />
-
-              </div>
-
-            )
-          )}
+      return (
+        <>
+          <div className="alert alert-warning">
+            Listen to the audio carefully, then answer the question below.
+          </div>
 
           <button
-            className="btn btn-success mt-4"
-            onClick={submitExam}
+            className="btn btn-secondary mb-3"
+            onClick={() => speakQuestion(question)}
           >
-            Submit Exam
+            🔊 Play Audio
           </button>
 
-          {/* RESULTS */}
+          {options.length > 0 && (
+            <div className="card p-3 mb-3">
+              <h6>Options</h6>
 
-          {result && (
-
-            <div
-              className="card mt-4 p-4"
-            >
-
-              <h3>
-                Results
-              </h3>
-
-              <p>
-                <strong>
-                  Reading:
-                </strong>{" "}
-                {result.reading}
-              </p>
-
-              <p>
-                <strong>
-                  Writing:
-                </strong>{" "}
-                {result.writing}
-              </p>
-
-              <p>
-                <strong>
-                  Listening:
-                </strong>{" "}
-                {result.listening}
-              </p>
-
-              <p>
-                <strong>
-                  Speaking:
-                </strong>{" "}
-                {result.speaking}
-              </p>
-
-              <h4>
-                Overall Band:
-                {" "}
-                {result.overall}
-              </h4>
-
-              <p>
-                {result.feedback}
-              </p>
-
-              {result.overall >= 7 &&
-                difficulty === "easy" && (
-
-                <div className="alert alert-success mt-3">
-
-                  Great work!
-
-                  You may be ready
-                  for Medium
-                  difficulty.
-
-                </div>
-
-              )}
-
-              {result.overall >= 7 &&
-                difficulty === "medium" && (
-
-                <div className="alert alert-success mt-3">
-
-                  Excellent!
-
-                  You may be ready
-                  for Hard
-                  difficulty.
-
-                </div>
-
-              )}
-
+              {options.map((option, optionIndex) => (
+                <p key={optionIndex} className="mb-1">
+                  {option}
+                </p>
+              ))}
             </div>
-
           )}
 
-        </div>
+          {options.length === 0 && (
+            <div className="card p-3 mb-3">
+              <p className="mb-0">
+                No written options available. Listen to the audio and type your answer.
+              </p>
+            </div>
+          )}
 
+          <textarea
+            className="form-control mb-3"
+            value={answers[answerKey] || ""}
+            placeholder="Type your listening answer..."
+            onChange={(e) =>
+              setAnswers({
+                ...answers,
+                [answerKey]: e.target.value
+              })
+            }
+          />
+        </>
+      );
+    }
+
+    if (skill === "speaking") {
+      return (
+        <>
+          <div className="alert alert-info">
+            Speaking interview mode. The question is hidden. Click Ask Question to hear it.
+          </div>
+
+          <div className="d-flex gap-2 mb-2">
+            <button
+              className="btn btn-secondary"
+              onClick={() => speakQuestion(cleanSpeakingQuestion(question))}
+            >
+              🗣️ Ask Question
+            </button>
+
+            <button
+              className="btn btn-info"
+              onClick={() => startSpeechRecognition(index)}
+            >
+              🎤 Record Answer
+            </button>
+          </div>
+
+          <textarea
+            className="form-control mb-3"
+            value={answers[answerKey] || ""}
+            placeholder="Your spoken answer will appear here..."
+            readOnly
+          />
+        </>
+      );
+    }
+
+    return (
+      <textarea
+        className="form-control mb-3"
+        value={answers[answerKey] || ""}
+        placeholder="Your answer..."
+        onChange={(e) =>
+          setAnswers({
+            ...answers,
+            [answerKey]: e.target.value
+          })
+        }
+      />
+    );
+  };
+
+  const renderQuestionText = (skill, question, index) => {
+  if (skill === "speaking") {
+    return (
+      <h5>
+        Speaking Interview Question {index + 1}
+      </h5>
+    );
+  }
+
+  if (skill === "listening") {
+    return (
+      <>
+        <h5>
+          Question {index + 1}
+        </h5>
+
+        <p style={{ whiteSpace: "pre-line" }}>
+          {getListeningDisplayText(question)}
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h5>
+        Question {index + 1}
+      </h5>
+
+      <p style={{ whiteSpace: "pre-line" }}>
+        {question}
+      </p>
+    </>
+  );
+};
+
+  return (
+    <div className="container mt-5 mb-5">
+      <h1>IELTS Practice Exam</h1>
+
+      {!questions && (
+        <div className="card p-4 mt-4">
+          <h4>Start New Exam</h4>
+
+          <div className="mb-3">
+            <label className="form-label">
+              Difficulty
+            </label>
+
+            <select
+              className="form-control"
+              value={difficulty}
+              onChange={(e) =>
+                setDifficulty(e.target.value)
+              }
+            >
+              <option value="easy">
+                Easy
+              </option>
+
+              <option value="medium">
+                Medium
+              </option>
+
+              <option value="hard">
+                Hard
+              </option>
+            </select>
+          </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={generateExam}
+          >
+            Generate Exam
+          </button>
+        </div>
       )}
 
+      {questions && !result && (
+        <div className="mt-4">
+          <div className="card p-4 mb-4">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <h3>
+                  {skillTitles[currentSkill]} Section
+                </h3>
+
+                <p className="text-muted mb-0">
+                  Difficulty: {difficulty}
+                </p>
+              </div>
+
+              <span className="badge bg-primary">
+                {skillOrder.indexOf(currentSkill) + 1} / {skillOrder.length}
+              </span>
+            </div>
+
+            <div className="progress mt-3">
+              <div
+                className="progress-bar"
+                style={{
+                  width: `${
+                    ((skillOrder.indexOf(currentSkill) + 1) /
+                      skillOrder.length) *
+                    100
+                  }%`
+                }}
+              >
+              </div>
+            </div>
+          </div>
+
+          {currentSkill === "listening" && (
+            <div className="alert alert-warning">
+              Listening section: read the question, click Play Audio, then answer based on what you hear.
+            </div>
+          )}
+
+          {currentSkill === "speaking" && (
+            <div className="alert alert-info">
+              Speaking section: questions are hidden. Click Ask Question, then Record Answer.
+              Your spoken response will appear in the box, but it cannot be typed manually.
+            </div>
+          )}
+
+          {getCurrentQuestions(currentSkill).map((question, index) => (
+            <div
+              className="card p-4 mb-3"
+              key={`${currentSkill}-${index}`}
+            >
+              {renderQuestionText(
+                currentSkill,
+                question,
+                index
+              )}
+
+              {renderQuestionInput(
+                currentSkill,
+                question,
+                index
+              )}
+            </div>
+          ))}
+
+          <div className="d-flex justify-content-between mt-4">
+            <button
+              className="btn btn-outline-secondary"
+              onClick={goPrevious}
+              disabled={currentSkill === "reading"}
+            >
+              Previous
+            </button>
+
+            {currentSkill !== "speaking" ? (
+              <button
+                className="btn btn-primary"
+                onClick={goNext}
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                className="btn btn-success"
+                onClick={submitExam}
+              >
+                Submit Exam
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {result && (
+        <div className="card mt-4 p-4">
+          <h3>Results</h3>
+
+          <p>
+            <strong>Reading:</strong>{" "}
+            {result.reading}
+          </p>
+
+          <p>
+            <strong>Writing:</strong>{" "}
+            {result.writing}
+          </p>
+
+          <p>
+            <strong>Listening:</strong>{" "}
+            {result.listening}
+          </p>
+
+          <p>
+            <strong>Speaking:</strong>{" "}
+            {result.speaking}
+          </p>
+
+          <h4>
+            Overall Band: {result.overall}
+          </h4>
+
+          <p>
+            {result.feedback}
+          </p>
+
+          {result.overall >= 7 &&
+            difficulty === "easy" && (
+              <div className="alert alert-success mt-3">
+                Great work! You may be ready for Medium difficulty.
+              </div>
+            )}
+
+          {result.overall >= 7 &&
+            difficulty === "medium" && (
+              <div className="alert alert-success mt-3">
+                Excellent! You may be ready for Hard difficulty.
+              </div>
+            )}
+
+          <button
+            className="btn btn-primary mt-3"
+            onClick={() => {
+              setQuestions(null);
+              setAnswers({});
+              setResult(null);
+              setCurrentSkill("reading");
+            }}
+          >
+            Start New Exam
+          </button>
+        </div>
+      )}
     </div>
-
   );
-
 }
 
 export default Exam;
