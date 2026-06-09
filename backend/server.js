@@ -518,6 +518,35 @@ app.get("/dashboard-stats", async (req, res) => {
   }
 });
 
+app.post("/logout", (req, res) => {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.status(500).json({
+        error: "Logout failed"
+      });
+    }
+
+    res.clearCookie("connect.sid");
+
+    res.json({
+      message: "Logged out successfully"
+    });
+  });
+});
+
+app.get("/check-session", (req, res) => {
+  if (req.session.userId) {
+    return res.json({
+      loggedIn: true,
+      userId: req.session.userId
+    });
+  }
+
+  res.status(401).json({
+    loggedIn: false
+  });
+});
+
 app.listen(3000, () => {
   console.log("Server Started");
 });

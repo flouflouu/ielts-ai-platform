@@ -1,4 +1,5 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -7,8 +8,28 @@ import Exam from "./pages/Exam";
 import Results from "./pages/Results";
 import History from "./pages/History";
 import Dashboard from "./pages/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(
+        "http://localhost:3000/logout",
+        {},
+        {
+          withCredentials: true
+        }
+      );
+
+      navigate("/login");
+    } catch (error) {
+      console.log(error);
+      alert("Logout failed.");
+    }
+  };
+
   return (
     <div>
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -66,22 +87,66 @@ function App() {
                   Register
                 </Link>
               </li>
+
+              <li className="nav-item">
+                <button
+                  className="btn btn-outline-light ms-lg-3"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </li>
             </ul>
           </div>
         </div>
       </nav>
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/exam" element={<Exam />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/results" element={<Results />} />
-      </Routes>
+<Routes>
+  <Route path="/" element={<Home />} />
+
+  <Route
+    path="/exam"
+    element={
+      <ProtectedRoute>
+        <Exam />
+      </ProtectedRoute>
+    }
+  />
+
+  <Route
+    path="/history"
+    element={
+      <ProtectedRoute>
+        <History />
+      </ProtectedRoute>
+    }
+  />
+
+  <Route
+    path="/dashboard"
+    element={
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    }
+  />
+
+  <Route
+    path="/results"
+    element={
+      <ProtectedRoute>
+        <Results />
+      </ProtectedRoute>
+    }
+  />
+
+  <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
+</Routes>
+
     </div>
   );
 }
 
 export default App;
+
