@@ -462,6 +462,62 @@ app.get("/exam-history", async (req, res) => {
   }
 });
 
+app.get("/dashboard-stats", async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({
+        error: "Please login first"
+      });
+    }
+
+    const [rows] = await db.promise().query(
+      `SELECT *
+       FROM exam_results
+       WHERE user_id = ?
+       ORDER BY created_at DESC`,
+      [req.session.userId]
+    );
+
+    if (rows.length === 0) {
+      return res.json({
+        totalExams: 0,
+        averageScore: 0,
+        bestScore: 0,
+        latestDifficulty: "None"
+      });
+    }
+
+    const totalExams = rows.length;
+
+    const bestScore = Math.max(
+      ...rows.map((row) => Number(row.overall))
+    );
+
+    const averageScore = (
+      rows.reduce(
+        (sum, row) => sum + Number(row.overall),
+        0
+      ) / totalExams
+    ).toFixed(2);
+
+    const latestDifficulty = rows[0].difficulty;
+
+    res.json({
+      totalExams,
+      averageScore,
+      bestScore,
+      latestDifficulty
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      error: "Failed to load dashboard stats"
+    });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Server Started");
 });
