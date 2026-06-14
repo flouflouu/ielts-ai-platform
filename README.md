@@ -256,5 +256,5 @@ node_modules
 ## Group Members
 
 * Daniel Aung
-* Add group member name here
+* Richard Seinsu
 
