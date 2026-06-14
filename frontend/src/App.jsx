@@ -1,4 +1,11 @@
-import { Routes, Route, Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import {
+  Routes,
+  Route,
+  Link,
+  useNavigate,
+  useLocation
+} from "react-router-dom";
 import axios from "axios";
 
 import Home from "./pages/Home";
@@ -12,6 +19,25 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    checkLoginStatus();
+  }, [location.pathname]);
+
+  const checkLoginStatus = async () => {
+    try {
+      await axios.get("http://localhost:3000/check-session", {
+        withCredentials: true
+      });
+
+      setLoggedIn(true);
+    } catch (error) {
+      setLoggedIn(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -23,6 +49,7 @@ function App() {
         }
       );
 
+      setLoggedIn(false);
       navigate("/login");
     } catch (error) {
       console.log(error);
@@ -58,95 +85,106 @@ function App() {
                 </Link>
               </li>
 
-              <li className="nav-item">
-                <Link className="nav-link" to="/exam">
-                  Practice Exam
-                </Link>
-              </li>
+              {loggedIn && (
+                <>
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/exam">
+                      Practice Exam
+                    </Link>
+                  </li>
 
-              <li className="nav-item">
-                <Link className="nav-link" to="/history">
-                  History
-                </Link>
-              </li>
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/history">
+                      History
+                    </Link>
+                  </li>
 
-              <li className="nav-item">
-                <Link className="nav-link" to="/dashboard">
-                  Dashboard
-                </Link>
-              </li>
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/dashboard">
+                      Dashboard
+                    </Link>
+                  </li>
+                </>
+              )}
 
-              <li className="nav-item">
-                <Link className="nav-link" to="/login">
-                  Login
-                </Link>
-              </li>
+              {!loggedIn && (
+                <>
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/login">
+                      Login
+                    </Link>
+                  </li>
 
-              <li className="nav-item">
-                <Link className="nav-link" to="/register">
-                  Register
-                </Link>
-              </li>
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/register">
+                      Register
+                    </Link>
+                  </li>
+                </>
+              )}
 
-              <li className="nav-item">
-                <button
-                  className="btn btn-outline-light ms-lg-3"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </button>
-              </li>
+              {loggedIn && (
+                <li className="nav-item">
+                  <button
+                    className="btn btn-outline-light ms-lg-3"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
         </div>
       </nav>
 
-<Routes>
-  <Route path="/" element={<Home />} />
+      <Routes>
+        <Route path="/" element={<Home />} />
 
-  <Route
-    path="/exam"
-    element={
-      <ProtectedRoute>
-        <Exam />
-      </ProtectedRoute>
-    }
-  />
+        <Route
+          path="/exam"
+          element={
+            <ProtectedRoute>
+              <Exam />
+            </ProtectedRoute>
+          }
+        />
 
-  <Route
-    path="/history"
-    element={
-      <ProtectedRoute>
-        <History />
-      </ProtectedRoute>
-    }
-  />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <History />
+            </ProtectedRoute>
+          }
+        />
 
-  <Route
-    path="/dashboard"
-    element={
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    }
-  />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-  <Route
-    path="/results"
-    element={
-      <ProtectedRoute>
-        <Results />
-      </ProtectedRoute>
-    }
-  />
+        <Route
+          path="/results"
+          element={
+            <ProtectedRoute>
+              <Results />
+            </ProtectedRoute>
+          }
+        />
 
-  <Route path="/login" element={<Login />} />
-  <Route path="/register" element={<Register />} />
-</Routes>
-
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
     </div>
   );
 }
 
 export default App;
+
+
 

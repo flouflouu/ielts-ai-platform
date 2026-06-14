@@ -1,104 +1,111 @@
 import { useState } from "react";
 import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
 
 function Register() {
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = async (e) => {
+  const navigate = useNavigate();
 
+  const handleRegister = async (e) => {
     e.preventDefault();
 
     try {
+      await axios.post("http://localhost:3000/register", {
+        name,
+        email,
+        password
+      });
 
-      const response =
-        await axios.post(
-          "http://localhost:3000/register",
-          {
-            name,
-            email,
-            password
-          }
-        );
-
-      console.log(response.data);
-
-      alert("Registration successful!");
-
-    }
-    catch(error) {
-
+      alert("Registration successful. Please login.");
+      navigate("/login");
+    } catch (error) {
       console.log(error);
-
-      alert("Registration failed");
-
+      alert(error.response?.data?.message || "Registration failed.");
     }
-
   };
 
   return (
-    <div className="container mt-5">
+    <div className="container page-container">
+      <div className="row justify-content-center">
+        <div className="col-md-6 col-lg-5">
+          <div className="card p-5">
+            <div className="text-center mb-4">
+              <span className="badge bg-primary mb-3">
+                Create Account
+              </span>
 
-      <h1>Register</h1>
+              <h1 className="section-title">
+                Register
+              </h1>
 
-      <form onSubmit={handleSubmit}>
+              <p className="text-muted">
+                Start practicing IELTS with AI feedback.
+              </p>
+            </div>
 
-        <div className="mb-3">
+            <form onSubmit={handleRegister}>
+              <div className="mb-3">
+                <label className="form-label">
+                  Full Name
+                </label>
 
-          <label>Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
 
-          <input
-            type="text"
-            className="form-control"
-            value={name}
-            onChange={(e) =>
-              setName(e.target.value)
-            }
-          />
+              <div className="mb-3">
+                <label className="form-label">
+                  Email
+                </label>
 
+                <input
+                  type="email"
+                  className="form-control"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label">
+                  Password
+                </label>
+
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <button className="btn btn-primary w-100">
+                Register
+              </button>
+            </form>
+
+            <p className="text-center text-muted mt-4 mb-0">
+              Already have an account?{" "}
+              <Link to="/login">
+                Login here
+              </Link>
+            </p>
+          </div>
         </div>
-
-        <div className="mb-3">
-
-          <label>Email</label>
-
-          <input
-            type="email"
-            className="form-control"
-            value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
-          />
-
-        </div>
-
-        <div className="mb-3">
-
-          <label>Password</label>
-
-          <input
-            type="password"
-            className="form-control"
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
-          />
-
-        </div>
-
-        <button
-          type="submit"
-          className="btn btn-success"
-        >
-          Register
-        </button>
-
-      </form>
-
+      </div>
     </div>
   );
 }
