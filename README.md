@@ -6,7 +6,7 @@
 
 ## Project Objective
 
-The objective of this project is to develop a full-stack web application that helps students practice IELTS exam sections using artificial intelligence. The platform allows users to register, log in, generate IELTS-style mock practice questions, complete different IELTS sections, receive AI-generated feedback, and review their scores through history and dashboard pages.
+The objective of this project is to develop a full-stack web application that helps students practice IELTS exam sections using artificial intelligence to randomly generate the mock exam questions within the parameters (difficulty, section) the user can set. The platform allows users to register, log in, generate IELTS-style mock practice questions, complete different IELTS sections, receive AI-generated feedback, and review their scores through history and dashboard pages.
 
 The system is designed to support practice for:
 
@@ -36,7 +36,7 @@ Students can choose to complete a full mock exam or practice specific sections i
 * Dashboard with performance statistics
 * Modern responsive frontend design
 
-## Tools and Technologies Used
+
 
 ### Frontend
 
